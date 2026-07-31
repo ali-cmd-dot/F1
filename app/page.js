@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
+  ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, Tooltip, CartesianGrid, LabelList,
 } from 'recharts';
-import { Video, AlertTriangle, Users, Calendar, Pause, Play, RefreshCw } from 'lucide-react';
+import { Video, AlertTriangle, Users, Calendar, Pause, Play, Clock } from 'lucide-react';
 
 const MONTH_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_SHORT = { January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'May',June:'Jun',July:'Jul',August:'Aug',September:'Sep',October:'Oct',November:'Nov',December:'Dec' };
@@ -15,13 +16,15 @@ function pct(curr, prev) {
 }
 
 function heatColor(value, max) {
-  if (max === 0) return '#171717';
+  if (max === 0 || value === 0) return '#171717';
   const ratio = value / max;
   if (ratio < 0.33) return '#215B3B';
   if (ratio < 0.55) return '#4C8A55';
   if (ratio < 0.75) return '#FFC107';
   return '#FF4D4D';
 }
+
+const tooltipStyle = { background: '#1E1E1E', border: '1px solid #171717', borderRadius: 8, fontSize: 12 };
 
 export default function Page() {
   const [raw, setRaw] = useState(null);
@@ -52,7 +55,6 @@ export default function Page() {
 
   const criticalRows = useMemo(() => filteredRows.filter((r) => r.incidentType === 'Critical'), [filteredRows]);
   const allCriticalRows = useMemo(() => rows.filter((r) => r.incidentType === 'Critical'), [rows]);
-
   const totalClients = useMemo(() => new Set(filteredRows.map((r) => r.client)).size, [filteredRows]);
 
   const topClients = useMemo(() => {
@@ -63,7 +65,6 @@ export default function Page() {
     return arr.map(([client, count]) => ({ client, count, pctW: (count / max) * 100 }));
   }, [filteredRows]);
 
-  // chronological monthly series (whole dataset, ignores dropdown) — for KPI deltas + heatmap
   const chronoMonthly = useMemo(() => {
     const map = {};
     rows.forEach((r) => {
@@ -95,7 +96,6 @@ export default function Page() {
     return [...chronoMonthly].sort((a, b) => b.critical - a.critical)[0];
   }, [chronoMonthly]);
 
-  // trend charts — respect Year filter (if All, sum by month-name across years; else that year's months)
   const trendData = useMemo(() => {
     const base = year === 'All' ? rows : rows.filter((r) => r.year === year);
     const map = {};
@@ -107,6 +107,11 @@ export default function Page() {
     });
     return MONTH_ORDER.map((m) => ({ label: MONTH_SHORT[m], total: map[m].total, critical: map[m].critical }));
   }, [rows, year]);
+
+  const lastActiveTrend = useMemo(() => {
+    const active = trendData.filter((d) => d.total > 0 || d.critical > 0);
+    return active[active.length - 1] || trendData[trendData.length - 1];
+  }, [trendData]);
 
   const videoByYear = useMemo(() => {
     const map = {};
@@ -153,8 +158,11 @@ export default function Page() {
             {MONTH_ORDER.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
           <div className="last-updated">
-            <RefreshCw size={13} />
-            Last Updated: <b>{lastUpdated}</b>
+            <div className="lu-icon"><Clock size={13} /></div>
+            <div>
+              <div className="lu-label">Last Updated</div>
+              <div className="lu-value">{lastUpdated}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -179,52 +187,84 @@ export default function Page() {
 
       <div className="kpi-grid">
         <div className="card">
-          <div className="kpi-top"><div className="kpi-icon green"><Video size={17} /></div><div className="kpi-label">Total Video Requests</div></div>
-          <div className="kpi-value mint">{filteredRows.length}</div>
+          <div className="kpi-top"><div className="kpi-icon green"><Video size={16} /></div><div className="kpi-label">Total Video Requests</div></div>
+          <div className="kpi-value mint">{filteredRows.length.toLocaleString()}</div>
+          <div className="kpi-subtitle">Customer request for video</div>
           <div className={`kpi-delta ${kpiDeltas.total >= 0 ? 'up' : 'down'}`}>{kpiDeltas.total >= 0 ? '↑' : '↓'} {Math.abs(kpiDeltas.total).toFixed(1)}% vs last month</div>
         </div>
         <div className="card">
-          <div className="kpi-top"><div className="kpi-icon red"><AlertTriangle size={17} /></div><div className="kpi-label">Critical Incidents</div></div>
-          <div className="kpi-value critical">{criticalRows.length}</div>
-          <div className={`kpi-delta ${kpiDeltas.critical >= 0 ? 'down' : 'up'}`}>{kpiDeltas.critical >= 0 ? '↑' : '↓'} {Math.abs(kpiDeltas.critical).toFixed(1)}% vs last month</div>
+          <div className="kpi-top"><div className="kpi-icon red"><AlertTriangle size={16} /></div><div className="kpi-label">Critical Incidents</div></div>
+          <div className="kpi-value critical">{criticalRows.length.toLocaleString()}</div>
+          <div className="kpi-subtitle">Incident Type: Critical</div>
+          <div className={`kpi-delta ${kpiDeltas.critical >= 0 ? 'up' : 'down'}`}>{kpiDeltas.critical >= 0 ? '↑' : '↓'} {Math.abs(kpiDeltas.critical).toFixed(1)}% vs last month</div>
         </div>
         <div className="card">
-          <div className="kpi-top"><div className="kpi-icon green"><Users size={17} /></div><div className="kpi-label">Total Clients</div></div>
-          <div className="kpi-value mint">{totalClients}</div>
+          <div className="kpi-top"><div className="kpi-icon green"><Users size={16} /></div><div className="kpi-label">Total Clients</div></div>
+          <div className="kpi-value mint">{totalClients.toLocaleString()}</div>
+          <div className="kpi-subtitle">Unique clients</div>
           <div className={`kpi-delta ${kpiDeltas.clients >= 0 ? 'up' : 'down'}`}>{kpiDeltas.clients >= 0 ? '↑' : '↓'} {Math.abs(kpiDeltas.clients).toFixed(1)}% vs last month</div>
         </div>
         <div className="card">
-          <div className="kpi-top"><div className="kpi-icon amber"><Calendar size={17} /></div><div className="kpi-label">Most Critical Month</div></div>
+          <div className="kpi-top"><div className="kpi-icon amber"><Calendar size={16} /></div><div className="kpi-label">Most Critical Month</div></div>
           <div className="kpi-value">{mostCriticalMonth ? `${MONTH_SHORT[mostCriticalMonth.month]} ${mostCriticalMonth.year}` : '-'}</div>
-          <div className="kpi-sub">{mostCriticalMonth?.critical || 0} Critical Incidents</div>
+          <div className="kpi-subtitle">Highest critical incidents</div>
+          <div className="kpi-delta down">↓ {mostCriticalMonth?.critical || 0} Critical Incidents</div>
         </div>
       </div>
 
       <div className="grid-3">
         <div className="card">
           <div className="chart-header"><span className="chart-title">Video Requests Trend</span><span className="chart-tag">Monthly</span></div>
-          <ResponsiveContainer width="100%" height={230}>
-            <LineChart data={trendData}>
-              <CartesianGrid stroke="#171717" />
-              <XAxis dataKey="label" stroke="#9E9E9E" fontSize={11} />
-              <YAxis stroke="#9E9E9E" fontSize={11} />
-              <Tooltip contentStyle={{ background: '#1E1E1E', border: '1px solid #171717' }} />
-              <Line type="monotone" dataKey="total" stroke="#94EC8E" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="chart-wrap">
+            {lastActiveTrend && (
+              <div className="chart-badge">
+                <div className="b-label">{lastActiveTrend.label} {year !== 'All' ? year : ''}</div>
+                <div className="b-value">{lastActiveTrend.total.toLocaleString()}</div>
+              </div>
+            )}
+            <ResponsiveContainer width="100%" height={230}>
+              <AreaChart data={trendData}>
+                <defs>
+                  <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#94EC8E" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#94EC8E" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="#222" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
+                <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Area type="monotone" dataKey="total" stroke="#94EC8E" strokeWidth={2.5} fill="url(#gradGreen)" dot={false} activeDot={{ r: 5, fill: '#94EC8E' }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="card">
           <div className="chart-header"><span className="chart-title">Critical Incidents Trend</span><span className="chart-tag">Monthly</span></div>
-          <ResponsiveContainer width="100%" height={230}>
-            <LineChart data={trendData}>
-              <CartesianGrid stroke="#171717" />
-              <XAxis dataKey="label" stroke="#9E9E9E" fontSize={11} />
-              <YAxis stroke="#9E9E9E" fontSize={11} />
-              <Tooltip contentStyle={{ background: '#1E1E1E', border: '1px solid #171717' }} />
-              <Line type="monotone" dataKey="critical" stroke="#FF4D4D" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="chart-wrap">
+            {lastActiveTrend && (
+              <div className="chart-badge critical">
+                <div className="b-label">{lastActiveTrend.label} {year !== 'All' ? year : ''}</div>
+                <div className="b-value">{lastActiveTrend.critical.toLocaleString()}</div>
+              </div>
+            )}
+            <ResponsiveContainer width="100%" height={230}>
+              <AreaChart data={trendData}>
+                <defs>
+                  <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FF4D4D" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#FF4D4D" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="#222" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
+                <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Area type="monotone" dataKey="critical" stroke="#FF4D4D" strokeWidth={2.5} fill="url(#gradRed)" dot={false} activeDot={{ r: 5, fill: '#FF4D4D' }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="card">
@@ -243,12 +283,14 @@ export default function Page() {
         <div className="card">
           <div className="chart-header"><span className="chart-title">Video Requests by Year</span></div>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={videoByYear}>
-              <CartesianGrid stroke="#171717" />
-              <XAxis dataKey="year" stroke="#9E9E9E" fontSize={11} />
-              <YAxis stroke="#9E9E9E" fontSize={11} />
-              <Tooltip contentStyle={{ background: '#1E1E1E', border: '1px solid #171717' }} />
-              <Line type="monotone" dataKey="count" stroke="#94EC8E" strokeWidth={2} dot={{ r: 3 }} />
+            <LineChart data={videoByYear} margin={{ top: 24, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#222" strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="year" stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
+              <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Line type="monotone" dataKey="count" stroke="#94EC8E" strokeWidth={2.5} dot={{ r: 4, fill: '#94EC8E', strokeWidth: 0 }}>
+                <LabelList dataKey="count" position="top" fill="#fff" fontSize={11} formatter={(v) => v.toLocaleString()} />
+              </Line>
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -256,12 +298,14 @@ export default function Page() {
         <div className="card">
           <div className="chart-header"><span className="chart-title">Critical Incidents by Year</span></div>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={criticalByYear}>
-              <CartesianGrid stroke="#171717" />
-              <XAxis dataKey="year" stroke="#9E9E9E" fontSize={11} />
-              <YAxis stroke="#9E9E9E" fontSize={11} />
-              <Tooltip contentStyle={{ background: '#1E1E1E', border: '1px solid #171717' }} />
-              <Bar dataKey="count" fill="#FF4D4D" radius={[4, 4, 0, 0]} />
+            <BarChart data={criticalByYear} margin={{ top: 24, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#222" strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="year" stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
+              <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Bar dataKey="count" fill="#FF4D4D" radius={[4, 4, 0, 0]} maxBarSize={44}>
+                <LabelList dataKey="count" position="top" fill="#fff" fontSize={11} formatter={(v) => v.toLocaleString()} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -273,9 +317,9 @@ export default function Page() {
               <tr><th></th>{MONTH_ORDER.map((m) => <th key={m}>{MONTH_SHORT[m]}</th>)}</tr>
             </thead>
             <tbody>
-              {years.map((y) => (
+              {years.map((y, i) => (
                 <tr key={y}>
-                  <td className="heatmap-year-label">{y}</td>
+                  <td className="heatmap-year-label">{i === years.length - 1 ? `${y} (YTD)` : y}</td>
                   {MONTH_ORDER.map((m) => {
                     const v = heatmap.map[`${y}|${m}`] || 0;
                     return (
