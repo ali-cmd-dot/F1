@@ -182,7 +182,7 @@ body {
 .chart-legend-dot.red { background: var(--critical); }
 .chart-legend-text { font-size: 11.5px; color: var(--text-secondary); }
 
-.chart-wrap { position: relative; flex: 1; min-height: 0; }
+.chart-wrap { position: relative; flex: 1; min-height: 0; overflow: visible; }
 
 .client-list { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 .client-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
@@ -197,7 +197,13 @@ body {
 .heatmap-header-row div { color: var(--text-muted); font-size: 11px; text-align: center; }
 .heatmap-row { display: grid; grid-template-columns: 70px repeat(12, 1fr); gap: 3px; flex: 1; min-height: 0; }
 .heatmap-year-label { color: var(--text-muted); font-size: 11px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; white-space: nowrap; }
-.heatmap-cell { border-radius: 5px; }
+.heatmap-cell {
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  color: #000;
+  font-size: 10.5px;
+  font-weight: 700;
+}
 .heatmap-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--text-muted); flex: 0 0 auto; }
 .heatmap-gradient { flex: 1; height: 7px; border-radius: 4px; background: linear-gradient(90deg, #215B3B, #94EC8E, #FFC107, #FF4D4D); }
 
