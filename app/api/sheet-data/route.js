@@ -36,14 +36,16 @@ export async function GET() {
     const filtered = rows
       .filter((r) => (r[colSubRequest] || '').trim() === TARGET_SUB_REQUEST)
       .map((r) => ({
-        year: (r[colYear] || 'Unknown').trim(),
-        month: (r[colMonth] || 'Unknown').trim(),
-        client: (r[colClient] || 'Unknown').trim() || 'Unknown',
+        year: (r[colYear] || '').trim() || 'Unknown',
+        month: (r[colMonth] || '').trim() || 'Unknown',
+        client: (r[colClient] || '').trim() || 'Unknown',
         incidentType: (r[colIncidentType] || '').trim(),
         description: colDesc ? (r[colDesc] || '').trim() : '',
       }));
 
-    const years = [...new Set(filtered.map((r) => r.year))].sort();
+    const years = [...new Set(filtered.map((r) => r.year))]
+      .filter((y) => y && y !== 'Unknown')
+      .sort();
 
     return NextResponse.json({ rows: filtered, years });
   } catch (err) {
