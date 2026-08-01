@@ -66,11 +66,9 @@ function heatColor(value, max) {
   return lerpColor(stops[idx], stops[idx + 1], scaled - idx);
 }
 
-// Badge is ALWAYS pinned near the top of the chart's margin area (y is fixed,
-// not derived from the dot's position) — so no matter which way the trend
-// goes, the box sits in empty space above the plotted line and never covers it.
-// Its right edge is aligned to the last dot's x, so it never overflows the
-// chart's right boundary either.
+// Box sits directly above the last dot (centered on its x), fixed near the
+// chart's top edge so it never overlaps the line, and the connector is a
+// straight vertical line — no diagonal crossing over other points.
 function makeDotRenderer(color, lastIndex, valueKey) {
   return (props) => {
     const { cx, cy, index, payload } = props;
@@ -86,17 +84,18 @@ function makeDotRenderer(color, lastIndex, valueKey) {
 
     const boxW = Math.max(90, label.length * 7.5, valueStr.length * 13);
     const boxH = 42;
-    const boxY = 6; // fixed near top of chart's margin area — always clear of the line
-    const boxX = Math.max(4, cx - boxW);
+    const boxY = 6;
+    const boxX = Math.max(4, cx - boxW / 2);
+    const centerX = boxX + boxW / 2;
 
     return (
       <g key={`dot-${index}`}>
         <circle cx={cx} cy={cy} r={9} fill={color} fillOpacity={0.22} />
         <circle cx={cx} cy={cy} r={5.5} fill="#fff" stroke={color} strokeWidth={2.5} />
-        <line x1={boxX + boxW / 2} y1={boxY + boxH} x2={cx} y2={cy - 8} stroke={color} strokeWidth={1.5} />
+        <line x1={centerX} y1={boxY + boxH} x2={cx} y2={cy - 8} stroke={color} strokeWidth={1.5} strokeDasharray="3 3" />
         <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={8} fill="#1E1E1E" stroke={color} strokeWidth={1.5} />
-        <text x={boxX + boxW / 2} y={boxY + 16} textAnchor="middle" fontSize="10.5" fill="#9E9E9E">{label}</text>
-        <text x={boxX + boxW / 2} y={boxY + 32} textAnchor="middle" fontSize="15" fontWeight="700" fill={color}>{valueStr}</text>
+        <text x={centerX} y={boxY + 16} textAnchor="middle" fontSize="10.5" fill="#9E9E9E">{label}</text>
+        <text x={centerX} y={boxY + 32} textAnchor="middle" fontSize="15" fontWeight="700" fill={color}>{valueStr}</text>
       </g>
     );
   };
@@ -181,6 +180,9 @@ export default function Page() {
       critical: m.critical,
     }));
   }, [chronoMonthly, year]);
+
+  // show every label if few months; skip alternate ones once it gets crowded
+  const xTickInterval = trendData.length > 8 ? 1 : 0;
 
   const heatmap = useMemo(() => {
     const map = {};
@@ -267,7 +269,7 @@ export default function Page() {
             <div className="chart-legend"><span className="chart-legend-dot green" /><span className="chart-legend-text">Total Video Requests</span></div>
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 56, right: 6, left: 0, bottom: 0 }}>
+                <AreaChart data={trendData} margin={{ top: 56, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#94EC8E" stopOpacity={0.45} />
@@ -275,7 +277,7 @@ export default function Page() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke="#262626" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={9} axisLine={false} tickLine={false} interval={0} tickMargin={6} />
+                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} interval={xTickInterval} tickMargin={8} />
                   <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, p) => p?.[0]?.payload?.fullLabel} />
                   <Area type="monotone" dataKey="total" stroke="#94EC8E" strokeWidth={2.5} fill="url(#gradGreen)" dot={makeDotRenderer('#94EC8E', lastIndex, 'total')} activeDot={{ r: 7, fill: '#94EC8E' }} isAnimationActive={false} />
@@ -289,7 +291,7 @@ export default function Page() {
             <div className="chart-legend"><span className="chart-legend-dot red" /><span className="chart-legend-text">Critical Incidents</span></div>
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 56, right: 6, left: 0, bottom: 0 }}>
+                <AreaChart data={trendData} margin={{ top: 56, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#FF4D4D" stopOpacity={0.45} />
@@ -297,7 +299,7 @@ export default function Page() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke="#262626" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={9} axisLine={false} tickLine={false} interval={0} tickMargin={6} />
+                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} interval={xTickInterval} tickMargin={8} />
                   <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, p) => p?.[0]?.payload?.fullLabel} />
                   <Area type="monotone" dataKey="critical" stroke="#FF4D4D" strokeWidth={2.5} fill="url(#gradRed)" dot={makeDotRenderer('#FF4D4D', lastIndex, 'critical')} activeDot={{ r: 7, fill: '#FF4D4D' }} isAnimationActive={false} />
