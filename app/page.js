@@ -9,6 +9,12 @@ import { Video, AlertTriangle, Users, Calendar, Clock } from 'lucide-react';
 const MONTH_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_SHORT = { January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'May',June:'Jun',July:'Jul',August:'Aug',September:'Sep',October:'Oct',November:'Nov',December:'Dec' };
 
+function normalizeMonth(raw) {
+  if (!raw) return null;
+  const clean = raw.trim().toLowerCase();
+  return MONTH_ORDER.find((m) => m.toLowerCase() === clean || m.toLowerCase().startsWith(clean)) || null;
+}
+
 const TICKER_HEADLINES = [
   'Driver Beaten By Locals After Accident',
   'Bus Assaulted By Local Youths Post-Collision',
@@ -27,6 +33,7 @@ const TICKER_HEADLINES = [
   'Bus Collides With Tree During Heavy Rain',
   "Bus Hits Bike — Biker's Leg Broken",
 ];
+const TICKER_LOOP = [...TICKER_HEADLINES, ...TICKER_HEADLINES];
 
 const tooltipStyle = { background: '#1E1E1E', border: '1px solid #171717', borderRadius: 8, fontSize: 12 };
 
@@ -34,19 +41,15 @@ function lerpColor(a, b, t) {
   const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
   const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
   const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
-  const rr = Math.round(ar + (br - ar) * t);
-  const rg = Math.round(ag + (bg - ag) * t);
-  const rb = Math.round(ab + (bb - ab) * t);
-  return `rgb(${rr},${rg},${rb})`;
+  return `rgb(${Math.round(ar + (br - ar) * t)},${Math.round(ag + (bg - ag) * t)},${Math.round(ab + (bb - ab) * t)})`;
 }
 
 function heatColor(value, max) {
   if (!value) return '#141414';
   const stops = ['#215B3B', '#94EC8E', '#FFC107', '#FF4D4D'];
   const ratio = Math.min(value / max, 1);
-  const segments = stops.length - 1;
-  const scaled = ratio * segments;
-  const idx = Math.min(Math.floor(scaled), segments - 1);
+  const scaled = ratio * (stops.length - 1);
+  const idx = Math.min(Math.floor(scaled), stops.length - 2);
   return lerpColor(stops[idx], stops[idx + 1], scaled - idx);
 }
 
@@ -68,12 +71,20 @@ export default function Page() {
       .catch((e) => setError(e.message));
   }, []);
 
-  const rows = raw?.rows || [];
+  // clean rows: valid year + valid month only, used for all charting
+  const cleanRows = useMemo(() => {
+    if (!raw) return [];
+    return raw.rows
+      .map((r) => ({ ...r, month: normalizeMonth(r.month) }))
+      .filter((r) => r.year && r.year !== 'Unknown' && r.month);
+  }, [raw]);
+
+  const allRows = raw?.rows || [];
   const years = raw?.years || [];
 
   const filteredRows = useMemo(
-    () => rows.filter((r) => (year === 'All' || r.year === year) && (month === 'All' || r.month === month)),
-    [rows, year, month]
+    () => allRows.filter((r) => (year === 'All' || r.year === year) && (month === 'All' || normalizeMonth(r.month) === month)),
+    [allRows, year, month]
   );
 
   const criticalRows = useMemo(() => filteredRows.filter((r) => r.incidentType === 'Critical'), [filteredRows]);
@@ -87,10 +98,9 @@ export default function Page() {
     return arr.map(([client, count]) => ({ client, count, pctW: (count / max) * 100 }));
   }, [filteredRows]);
 
-  // chronological month-year series — only months that actually have data
   const chronoMonthly = useMemo(() => {
     const map = {};
-    rows.forEach((r) => {
+    cleanRows.forEach((r) => {
       const key = `${r.year}-${r.month}`;
       if (!map[key]) map[key] = { year: r.year, month: r.month, total: 0, critical: 0 };
       map[key].total += 1;
@@ -99,7 +109,7 @@ export default function Page() {
     return Object.values(map).sort((a, b) =>
       a.year !== b.year ? a.year.localeCompare(b.year) : MONTH_ORDER.indexOf(a.month) - MONTH_ORDER.indexOf(b.month)
     );
-  }, [rows]);
+  }, [cleanRows]);
 
   const mostCriticalMonth = useMemo(() => {
     if (chronoMonthly.length === 0) return null;
@@ -120,13 +130,13 @@ export default function Page() {
 
   const heatmap = useMemo(() => {
     const map = {};
-    rows.forEach((r) => {
+    cleanRows.forEach((r) => {
       const key = `${r.year}|${r.month}`;
       map[key] = (map[key] || 0) + 1;
     });
     const max = Math.max(...Object.values(map), 1);
     return { map, max };
-  }, [rows]);
+  }, [cleanRows]);
 
   if (error) return <div className="state-msg">Error: {error}</div>;
   if (!raw) return <div className="state-msg">Loading...</div>;
@@ -137,8 +147,8 @@ export default function Page() {
         <div className="header-left">
           <img src="/cautio-logo.png" alt="Cautio" />
           <div>
-            <h1>Cautio Incident Intelligence</h1>
-            <p>Powering <span className="tagline-highlight">Safer Roads</span> with <span className="tagline-highlight">Real-Time Video Insights</span></p>
+            <h1>Cautio</h1>
+            <p>Building <span className="tagline-highlight">India's Safest Roads</span> Through Real-Time Fleet Video Intelligence</p>
           </div>
         </div>
         <div className="header-right">
@@ -161,10 +171,10 @@ export default function Page() {
       </div>
 
       <div className="ticker-wrap">
-        <div className="ticker-label"><AlertTriangle size={13} /> MOST DANGEROUS INCIDENT</div>
+        <div className="ticker-label"><AlertTriangle size={13} /> INCIDENTS INCLUDE</div>
         <div className="ticker-track">
           <div className="ticker-content">
-            {TICKER_HEADLINES.map((h, i) => (
+            {TICKER_LOOP.map((h, i) => (
               <span className="ticker-item" key={i}><b>•</b>{h}</span>
             ))}
           </div>
@@ -195,96 +205,99 @@ export default function Page() {
         </div>
       </div>
 
-      <div className="grid-3">
-        <div className="card">
-          <div className="chart-header"><span className="chart-title">Video Requests Trend</span><span className="chart-tag">Monthly</span></div>
-          <div className="chart-wrap">
-            {lastPoint && (
-              <div className="chart-badge">
-                <div className="b-label">{lastPoint.fullLabel}</div>
-                <div className="b-value">{lastPoint.total.toLocaleString()}</div>
-              </div>
-            )}
-            <ResponsiveContainer width="100%" height={230}>
-              <AreaChart data={trendData}>
-                <defs>
-                  <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#94EC8E" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#94EC8E" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#222" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={10} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, p) => p?.[0]?.payload?.fullLabel} />
-                <Area type="monotone" dataKey="total" stroke="#94EC8E" strokeWidth={2.5} fill="url(#gradGreen)" dot={{ r: 3, fill: '#94EC8E', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#94EC8E' }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="chart-header"><span className="chart-title">Critical Incidents Trend</span><span className="chart-tag">Monthly</span></div>
-          <div className="chart-wrap">
-            {lastPoint && (
-              <div className="chart-badge critical">
-                <div className="b-label">{lastPoint.fullLabel}</div>
-                <div className="b-value">{lastPoint.critical.toLocaleString()}</div>
-              </div>
-            )}
-            <ResponsiveContainer width="100%" height={230}>
-              <AreaChart data={trendData}>
-                <defs>
-                  <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF4D4D" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#FF4D4D" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#222" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={10} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, p) => p?.[0]?.payload?.fullLabel} />
-                <Area type="monotone" dataKey="critical" stroke="#FF4D4D" strokeWidth={2.5} fill="url(#gradRed)" dot={{ r: 3, fill: '#FF4D4D', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#FF4D4D' }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="chart-header"><span className="chart-title">Top 5 Clients</span></div>
-          {topClients.map((c) => (
-            <div className="client-row" key={c.client}>
-              <div className="client-name">{c.client}</div>
-              <div className="client-bar-bg"><div className="client-bar-fill" style={{ width: `${c.pctW}%` }} /></div>
-              <div className="client-count">{c.count}</div>
+      <div className="middle-section">
+        <div className="charts-row">
+          <div className="card">
+            <div className="chart-header"><span className="chart-title">Video Requests Trend</span><span className="chart-tag">Monthly</span></div>
+            <div className="chart-wrap">
+              {lastPoint && (
+                <div className="chart-badge">
+                  <div className="b-label">{lastPoint.fullLabel}</div>
+                  <div className="b-value">{lastPoint.total.toLocaleString()}</div>
+                </div>
+              )}
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#94EC8E" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#94EC8E" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#222" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={10} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                  <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, p) => p?.[0]?.payload?.fullLabel} />
+                  <Area type="monotone" dataKey="total" stroke="#94EC8E" strokeWidth={2.5} fill="url(#gradGreen)" dot={{ r: 5, fill: '#94EC8E', strokeWidth: 0 }} activeDot={{ r: 7, fill: '#94EC8E' }} />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      <div className="card">
-        <div className="chart-header"><span className="chart-title">Incidents by Month (Heatmap)</span></div>
-        <table className="heatmap-table">
-          <thead>
-            <tr><th></th>{MONTH_ORDER.map((m) => <th key={m}>{MONTH_SHORT[m]}</th>)}</tr>
-          </thead>
-          <tbody>
+          <div className="card">
+            <div className="chart-header"><span className="chart-title">Critical Incidents Trend</span><span className="chart-tag">Monthly</span></div>
+            <div className="chart-wrap">
+              {lastPoint && (
+                <div className="chart-badge critical">
+                  <div className="b-label">{lastPoint.fullLabel}</div>
+                  <div className="b-value">{lastPoint.critical.toLocaleString()}</div>
+                </div>
+              )}
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#FF4D4D" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#FF4D4D" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#222" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={10} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                  <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, p) => p?.[0]?.payload?.fullLabel} />
+                  <Area type="monotone" dataKey="critical" stroke="#FF4D4D" strokeWidth={2.5} fill="url(#gradRed)" dot={{ r: 5, fill: '#FF4D4D', strokeWidth: 0 }} activeDot={{ r: 7, fill: '#FF4D4D' }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="chart-header"><span className="chart-title">Top 5 Clients</span></div>
+            <div className="client-list">
+              {topClients.map((c) => (
+                <div className="client-row" key={c.client}>
+                  <div className="client-name">{c.client}</div>
+                  <div className="client-bar-bg"><div className="client-bar-fill" style={{ width: `${c.pctW}%` }} /></div>
+                  <div className="client-count">{c.count}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="card heatmap-card">
+          <div className="chart-header"><span className="chart-title">Incidents by Month (Heatmap)</span></div>
+          <div className="heatmap-body">
+            <div className="heatmap-header-row">
+              <div></div>
+              {MONTH_ORDER.map((m) => <div key={m}>{MONTH_SHORT[m]}</div>)}
+            </div>
             {years.map((y, i) => (
-              <tr key={y}>
-                <td className="heatmap-year-label">{i === years.length - 1 ? `${y} (YTD)` : y}</td>
+              <div className="heatmap-row" key={y}>
+                <div className="heatmap-year-label">{i === years.length - 1 ? `${y} (YTD)` : y}</div>
                 {MONTH_ORDER.map((m) => {
                   const v = heatmap.map[`${y}|${m}`] || 0;
                   return (
-                    <td key={m}>
-                      <div className="heatmap-cell" style={{ background: heatColor(v, heatmap.max) }}>{v || ''}</div>
-                    </td>
+                    <div key={m} className="heatmap-cell" style={{ background: heatColor(v, heatmap.max) }}>
+                      {v || ''}
+                    </div>
                   );
                 })}
-              </tr>
+              </div>
             ))}
-          </tbody>
-        </table>
-        <div className="heatmap-legend"><span>Low</span><div className="heatmap-gradient" /><span>High</span></div>
+          </div>
+          <div className="heatmap-legend"><span>Low</span><div className="heatmap-gradient" /><span>High</span></div>
+        </div>
       </div>
     </div>
   );
