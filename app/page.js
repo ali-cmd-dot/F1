@@ -8,7 +8,7 @@ import { Video, AlertTriangle, Users, Calendar, Clock } from 'lucide-react';
 
 const MONTH_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_SHORT = { January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'May',June:'Jun',July:'Jul',August:'Aug',September:'Sep',October:'Oct',November:'Nov',December:'Dec' };
-const REFRESH_INTERVAL_MS = 60000;
+const REFRESH_INTERVAL_MS = 60000; // auto-refresh every 1 minute
 
 function normalizeMonth(raw) {
   if (!raw) return null;
@@ -66,9 +66,6 @@ function heatColor(value, max) {
   return lerpColor(stops[idx], stops[idx + 1], scaled - idx);
 }
 
-// Box sits directly above the last dot (centered on its x), fixed near the
-// chart's top edge so it never overlaps the line, and the connector is a
-// straight vertical line — no diagonal crossing over other points.
 function makeDotRenderer(color, lastIndex, valueKey) {
   return (props) => {
     const { cx, cy, index, payload } = props;
@@ -181,7 +178,6 @@ export default function Page() {
     }));
   }, [chronoMonthly, year]);
 
-  // show every label if few months; skip alternate ones once it gets crowded
   const xTickInterval = trendData.length > 8 ? 1 : 0;
 
   const heatmap = useMemo(() => {
@@ -269,7 +265,7 @@ export default function Page() {
             <div className="chart-legend"><span className="chart-legend-dot green" /><span className="chart-legend-text">Total Video Requests</span></div>
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 56, right: 8, left: 0, bottom: 0 }}>
+                <AreaChart data={trendData} margin={{ top: 56, right: 40, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#94EC8E" stopOpacity={0.45} />
@@ -291,7 +287,7 @@ export default function Page() {
             <div className="chart-legend"><span className="chart-legend-dot red" /><span className="chart-legend-text">Critical Incidents</span></div>
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 56, right: 8, left: 0, bottom: 0 }}>
+                <AreaChart data={trendData} margin={{ top: 56, right: 40, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#FF4D4D" stopOpacity={0.45} />
