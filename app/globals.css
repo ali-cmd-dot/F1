@@ -31,7 +31,6 @@ body {
   overflow: hidden;
 }
 
-/* Header */
 .header {
   display: flex;
   justify-content: space-between;
@@ -79,7 +78,6 @@ body {
 .lu-label { font-size: 10.5px; color: var(--text-muted); }
 .lu-value { font-size: 12.5px; color: var(--text-primary); font-weight: 600; }
 
-/* Ticker */
 .ticker-wrap {
   background: linear-gradient(90deg, rgba(255,77,77,0.30) 0%, rgba(255,77,77,0.08) 45%, rgba(0,0,0,0) 75%);
   border-radius: 8px;
@@ -124,7 +122,6 @@ body {
   100% { transform: translateX(-50%); }
 }
 
-/* KPI cards */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -157,7 +154,6 @@ body {
 .kpi-value.critical { color: var(--critical); }
 .kpi-subtitle { color: var(--text-muted); font-size: 11.5px; margin-top: 5px; }
 
-/* middle section — fills remaining space */
 .middle-section {
   flex: 1 1 auto;
   min-height: 0;
@@ -204,7 +200,6 @@ body {
 .chart-badge .b-value { color: var(--mint); font-weight: 700; font-size: 15px; }
 .chart-badge.critical .b-value { color: var(--critical); }
 
-/* Top clients */
 .client-list { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 .client-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
 .client-name { color: var(--text-primary); font-size: 13px; width: 88px; flex-shrink: 0; }
@@ -212,7 +207,6 @@ body {
 .client-bar-fill { height: 100%; background: var(--mint); border-radius: 4px; }
 .client-count { color: var(--mint); font-weight: 600; font-size: 13px; width: 40px; text-align: right; }
 
-/* Heatmap */
 .heatmap-card { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 .heatmap-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; }
 .heatmap-header-row { display: grid; grid-template-columns: 70px repeat(12, 1fr); gap: 3px; flex: 0 0 auto; }
