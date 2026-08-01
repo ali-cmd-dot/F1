@@ -9,9 +9,16 @@ function findCol(headers, keywords) {
   return headers.find((h) => keywords.some((k) => h.toLowerCase().includes(k)));
 }
 
+function extractYear(raw) {
+  if (!raw) return null;
+  const match = String(raw).match(/\b(20\d{2})\b/);
+  return match ? match[1] : null;
+}
+
 export async function GET() {
   try {
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+    // cache-bust so Google's CDN never serves a stale CSV
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}&t=${Date.now()}`;
     const res = await fetch(csvUrl, { cache: 'no-store' });
 
     if (!res.ok) {
@@ -35,19 +42,22 @@ export async function GET() {
 
     const filtered = rows
       .filter((r) => (r[colSubRequest] || '').trim() === TARGET_SUB_REQUEST)
-      .map((r) => ({
-        year: (r[colYear] || '').trim() || 'Unknown',
-        month: (r[colMonth] || '').trim() || 'Unknown',
-        client: (r[colClient] || '').trim() || 'Unknown',
-        incidentType: (r[colIncidentType] || '').trim(),
-        description: colDesc ? (r[colDesc] || '').trim() : '',
-      }));
+      .map((r) => {
+        const rawYear = (r[colYear] || '').trim();
+        return {
+          year: extractYear(rawYear) || rawYear || 'Unknown',
+          month: (r[colMonth] || '').trim() || 'Unknown',
+          client: (r[colClient] || '').trim() || 'Unknown',
+          incidentType: (r[colIncidentType] || '').trim(),
+          description: colDesc ? (r[colDesc] || '').trim() : '',
+        };
+      });
 
     const years = [...new Set(filtered.map((r) => r.year))]
       .filter((y) => y && y !== 'Unknown')
       .sort();
 
-    return NextResponse.json({ rows: filtered, years });
+    return NextResponse.json({ rows: filtered, years, totalRowsInSheet: rows.length, matchedRows: filtered.length });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
