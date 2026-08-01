@@ -10,10 +10,23 @@ const MONTH_ORDER = ['January','February','March','April','May','June','July','A
 const MONTH_SHORT = { January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'May',June:'Jun',July:'Jul',August:'Aug',September:'Sep',October:'Oct',November:'Nov',December:'Dec' };
 const REFRESH_INTERVAL_MS = 60000;
 
+// robust month matcher: handles "August", "Aug", "Aug-25", "8", "08", "01-Aug-2025" etc.
 function normalizeMonth(raw) {
   if (!raw) return null;
-  const clean = raw.trim().toLowerCase();
-  return MONTH_ORDER.find((m) => m.toLowerCase() === clean || m.toLowerCase().startsWith(clean)) || null;
+  const clean = String(raw).trim().toLowerCase();
+  if (!clean) return null;
+
+  if (/^\d{1,2}$/.test(clean)) {
+    const num = parseInt(clean, 10);
+    if (num >= 1 && num <= 12) return MONTH_ORDER[num - 1];
+  }
+
+  const found = MONTH_ORDER.find((m) => {
+    const full = m.toLowerCase();
+    const short = full.slice(0, 3);
+    return clean === full || clean === short || clean.includes(full) || clean.includes(short);
+  });
+  return found || null;
 }
 
 const TICKER_HEADLINES = [
@@ -54,9 +67,6 @@ function heatColor(value, max) {
   return lerpColor(stops[idx], stops[idx + 1], scaled - idx);
 }
 
-// Renders every data point as a plain dot, except the last point which gets
-// a bigger highlighted dot PLUS a speech-bubble badge (label + value) drawn
-// directly in SVG coordinates, so the pointer always lines up exactly with the dot.
 function makeDotRenderer(color, lastIndex, valueKey) {
   return (props) => {
     const { cx, cy, index, payload } = props;
@@ -72,22 +82,17 @@ function makeDotRenderer(color, lastIndex, valueKey) {
 
     const boxW = Math.max(88, label.length * 7.5, valueStr.length * 13);
     const boxH = 42;
-    const gap = 14;
-    const boxX = cx - boxW + 18;
-    const boxY = cy - boxH - gap;
+    const gap = 16;
+    const boxX = Math.max(4, cx - boxW + 18);
+    const boxY = Math.max(4, cy - boxH - gap);
     const pointerCx = cx;
     const pointerTopY = boxY + boxH;
 
     return (
       <g key={`dot-${index}`}>
-        {/* highlighted last dot */}
         <circle cx={cx} cy={cy} r={9} fill={color} fillOpacity={0.22} />
         <circle cx={cx} cy={cy} r={5.5} fill="#fff" stroke={color} strokeWidth={2.5} />
-
-        {/* pointer connecting badge to dot */}
         <line x1={pointerCx} y1={pointerTopY} x2={cx} y2={cy - 8} stroke={color} strokeWidth={1.5} />
-
-        {/* badge box */}
         <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={8} fill="#1E1E1E" stroke={color} strokeWidth={1.5} />
         <text x={boxX + boxW / 2} y={boxY + 16} textAnchor="middle" fontSize="10.5" fill="#9E9E9E">{label}</text>
         <text x={boxX + boxW / 2} y={boxY + 32} textAnchor="middle" fontSize="15" fontWeight="700" fill={color}>{valueStr}</text>
@@ -176,7 +181,6 @@ export default function Page() {
     }));
   }, [chronoMonthly, year]);
 
-  // keep x-axis labels straight & readable: skip some ticks if too many months
   const xTickInterval = trendData.length > 12 ? Math.ceil(trendData.length / 12) - 1 : 0;
 
   const heatmap = useMemo(() => {
@@ -264,7 +268,7 @@ export default function Page() {
             <div className="chart-legend"><span className="chart-legend-dot green" /><span className="chart-legend-text">Total Video Requests</span></div>
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 56, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart data={trendData} margin={{ top: 70, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#94EC8E" stopOpacity={0.45} />
@@ -286,7 +290,7 @@ export default function Page() {
             <div className="chart-legend"><span className="chart-legend-dot red" /><span className="chart-legend-text">Critical Incidents</span></div>
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 56, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart data={trendData} margin={{ top: 70, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#FF4D4D" stopOpacity={0.45} />
