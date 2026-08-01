@@ -8,7 +8,7 @@ import { Video, AlertTriangle, Users, Calendar, Clock } from 'lucide-react';
 
 const MONTH_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_SHORT = { January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'May',June:'Jun',July:'Jul',August:'Aug',September:'Sep',October:'Oct',November:'Nov',December:'Dec' };
-const REFRESH_INTERVAL_MS = 60000; // auto-refresh every 60s
+const REFRESH_INTERVAL_MS = 60000;
 
 function normalizeMonth(raw) {
   if (!raw) return null;
@@ -20,7 +20,7 @@ const TICKER_HEADLINES = [
   'Driver Beaten By Locals After Accident',
   'Bus Assaulted By Local Youths Post-Collision',
   'Bus Hits Pedestrian/Animal — Injuries Reported',
-  'Vehicle Front Severely Damaged, Device Missing',
+  'Vehicle Front Severely Damaged',
   'Major Accident: Driver Using Mobile / Fatigue',
   'Suspected Drunk Driving Incident Reported',
   'Driver Assaulted By Locals After Collision',
@@ -80,7 +80,6 @@ export default function Page() {
     return () => clearInterval(intervalRef.current);
   }, []);
 
-  // clean rows: valid year + valid month only, used for all charting/heatmap
   const cleanRows = useMemo(() => {
     if (!raw) return [];
     return raw.rows
@@ -226,7 +225,7 @@ export default function Page() {
                 </div>
               )}
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData}>
+                <AreaChart data={trendData} margin={{ top: 24, right: 8, left: 0, bottom: 4 }}>
                   <defs>
                     <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#94EC8E" stopOpacity={0.45} />
@@ -234,10 +233,20 @@ export default function Page() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke="#262626" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={10} axisLine={false} tickLine={false} interval={0} />
+                  <XAxis
+                    dataKey="shortLabel"
+                    stroke="#9E9E9E"
+                    fontSize={10}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                    angle={-40}
+                    textAnchor="end"
+                    height={36}
+                  />
                   <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, p) => p?.[0]?.payload?.fullLabel} />
-                  <Area type="monotone" dataKey="total" stroke="#94EC8E" strokeWidth={2.5} fill="url(#gradGreen)" dot={{ r: 5, fill: '#94EC8E', strokeWidth: 0 }} activeDot={{ r: 7, fill: '#94EC8E' }} />
+                  <Area type="monotone" dataKey="total" stroke="#94EC8E" strokeWidth={2.5} fill="url(#gradGreen)" dot={{ r: 4, fill: '#94EC8E', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#94EC8E' }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -254,7 +263,7 @@ export default function Page() {
                 </div>
               )}
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData}>
+                <AreaChart data={trendData} margin={{ top: 24, right: 8, left: 0, bottom: 4 }}>
                   <defs>
                     <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#FF4D4D" stopOpacity={0.45} />
@@ -262,10 +271,20 @@ export default function Page() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke="#262626" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={10} axisLine={false} tickLine={false} interval={0} />
+                  <XAxis
+                    dataKey="shortLabel"
+                    stroke="#9E9E9E"
+                    fontSize={10}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                    angle={-40}
+                    textAnchor="end"
+                    height={36}
+                  />
                   <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, p) => p?.[0]?.payload?.fullLabel} />
-                  <Area type="monotone" dataKey="critical" stroke="#FF4D4D" strokeWidth={2.5} fill="url(#gradRed)" dot={{ r: 5, fill: '#FF4D4D', strokeWidth: 0 }} activeDot={{ r: 7, fill: '#FF4D4D' }} />
+                  <Area type="monotone" dataKey="critical" stroke="#FF4D4D" strokeWidth={2.5} fill="url(#gradRed)" dot={{ r: 4, fill: '#FF4D4D', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#FF4D4D' }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
