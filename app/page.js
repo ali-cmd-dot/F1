@@ -79,7 +79,7 @@ function makeDotRenderer(color, lastIndex, valueKey) {
     const value = payload[valueKey];
     const valueStr = value.toLocaleString();
 
-    const boxW = Math.max(90, label.length * 7.5, valueStr.length * 13);
+    const boxW = Math.min(120, Math.max(78, label.length * 6.5, valueStr.length * 11));
     const boxH = 42;
     const boxY = 6;
     const boxX = Math.max(4, cx - boxW / 2);
@@ -265,7 +265,7 @@ export default function Page() {
             <div className="chart-legend"><span className="chart-legend-dot green" /><span className="chart-legend-text">Total Video Requests</span></div>
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 56, right: 40, left: 0, bottom: 0 }}>
+                <AreaChart data={trendData} margin={{ top: 56, right: 70, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#94EC8E" stopOpacity={0.45} />
@@ -287,7 +287,7 @@ export default function Page() {
             <div className="chart-legend"><span className="chart-legend-dot red" /><span className="chart-legend-text">Critical Incidents</span></div>
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 56, right: 40, left: 0, bottom: 0 }}>
+                <AreaChart data={trendData} margin={{ top: 56, right: 70, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#FF4D4D" stopOpacity={0.45} />
