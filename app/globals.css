@@ -42,8 +42,8 @@ body {
 }
 
 .header-left { display: flex; align-items: center; gap: 16px; }
-.header-left img { height: 58px; width: 58px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-.header-left h1 { font-size: 30px; font-weight: 800; margin: 0; letter-spacing: 0.3px; }
+.header-left img { height: 72px; width: 72px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.header-left h1 { font-size: 32px; font-weight: 800; margin: 0; letter-spacing: 0.3px; }
 .header-left p { margin: 4px 0 0; font-size: 14.5px; color: var(--text-secondary); max-width: 640px; }
 .tagline-highlight { color: var(--mint); font-style: italic; font-weight: 700; }
 
@@ -156,7 +156,6 @@ body {
 .kpi-value.mint { color: var(--mint); }
 .kpi-value.critical { color: var(--critical); }
 .kpi-subtitle { color: var(--text-muted); font-size: 11.5px; margin-top: 5px; }
-.kpi-critical-line { font-size: 11.5px; margin-top: 6px; font-weight: 600; color: var(--critical); }
 
 /* middle section — fills remaining space */
 .middle-section {
@@ -177,9 +176,15 @@ body {
 
 .charts-row .card { display: flex; flex-direction: column; min-height: 0; }
 
-.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex: 0 0 auto; }
+.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex: 0 0 auto; }
 .chart-title { font-size: 12.5px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
 .chart-tag { font-size: 11px; color: var(--text-muted); background: var(--border); padding: 4px 10px; border-radius: 6px; }
+
+.chart-legend { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex: 0 0 auto; }
+.chart-legend-dot { width: 9px; height: 9px; border-radius: 2px; }
+.chart-legend-dot.green { background: var(--mint); }
+.chart-legend-dot.red { background: var(--critical); }
+.chart-legend-text { font-size: 11.5px; color: var(--text-secondary); }
 
 .chart-wrap { position: relative; flex: 1; min-height: 0; }
 
@@ -214,13 +219,7 @@ body {
 .heatmap-header-row div { color: var(--text-muted); font-size: 11px; text-align: center; }
 .heatmap-row { display: grid; grid-template-columns: 70px repeat(12, 1fr); gap: 3px; flex: 1; min-height: 0; }
 .heatmap-year-label { color: var(--text-muted); font-size: 11px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; white-space: nowrap; }
-.heatmap-cell {
-  border-radius: 5px;
-  color: #000;
-  font-size: 11px;
-  font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-}
+.heatmap-cell { border-radius: 5px; }
 .heatmap-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--text-muted); flex: 0 0 auto; }
 .heatmap-gradient { flex: 1; height: 7px; border-radius: 4px; background: linear-gradient(90deg, #215B3B, #94EC8E, #FFC107, #FF4D4D); }
 
