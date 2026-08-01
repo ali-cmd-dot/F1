@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
@@ -8,6 +8,7 @@ import { Video, AlertTriangle, Users, Calendar, Clock } from 'lucide-react';
 
 const MONTH_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_SHORT = { January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'May',June:'Jun',July:'Jul',August:'Aug',September:'Sep',October:'Oct',November:'Nov',December:'Dec' };
+const REFRESH_INTERVAL_MS = 60000; // auto-refresh every 60s
 
 function normalizeMonth(raw) {
   if (!raw) return null;
@@ -59,19 +60,27 @@ export default function Page() {
   const [year, setYear] = useState('All');
   const [month, setMonth] = useState('All');
   const [lastUpdated, setLastUpdated] = useState('');
+  const intervalRef = useRef(null);
 
-  useEffect(() => {
-    fetch('/api/sheet-data')
+  const loadData = () => {
+    fetch('/api/sheet-data', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         if (d.error) return setError(d.error);
+        setError(null);
         setRaw(d);
         setLastUpdated(new Date().toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }));
       })
       .catch((e) => setError(e.message));
+  };
+
+  useEffect(() => {
+    loadData();
+    intervalRef.current = setInterval(loadData, REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalRef.current);
   }, []);
 
-  // clean rows: valid year + valid month only, used for all charting
+  // clean rows: valid year + valid month only, used for all charting/heatmap
   const cleanRows = useMemo(() => {
     if (!raw) return [];
     return raw.rows
@@ -201,14 +210,14 @@ export default function Page() {
           <div className="kpi-top"><div className="kpi-icon amber"><Calendar size={16} /></div><div className="kpi-label">Most Critical Month</div></div>
           <div className="kpi-value">{mostCriticalMonth ? `${MONTH_SHORT[mostCriticalMonth.month]} ${mostCriticalMonth.year}` : '-'}</div>
           <div className="kpi-subtitle">Highest critical incidents</div>
-          <div className="kpi-critical-line">↓ {mostCriticalMonth?.critical || 0} Critical Incidents</div>
         </div>
       </div>
 
       <div className="middle-section">
         <div className="charts-row">
           <div className="card">
-            <div className="chart-header"><span className="chart-title">Video Requests Trend</span><span className="chart-tag">Monthly</span></div>
+            <div className="chart-header"><span className="chart-title">Video Requests Trend (Total)</span><span className="chart-tag">Monthly</span></div>
+            <div className="chart-legend"><span className="chart-legend-dot green" /><span className="chart-legend-text">Total Video Requests</span></div>
             <div className="chart-wrap">
               {lastPoint && (
                 <div className="chart-badge">
@@ -220,12 +229,12 @@ export default function Page() {
                 <AreaChart data={trendData}>
                   <defs>
                     <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#94EC8E" stopOpacity={0.35} />
+                      <stop offset="5%" stopColor="#94EC8E" stopOpacity={0.45} />
                       <stop offset="95%" stopColor="#94EC8E" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="#222" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={10} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                  <CartesianGrid stroke="#262626" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={10} axisLine={false} tickLine={false} interval={0} />
                   <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, p) => p?.[0]?.payload?.fullLabel} />
                   <Area type="monotone" dataKey="total" stroke="#94EC8E" strokeWidth={2.5} fill="url(#gradGreen)" dot={{ r: 5, fill: '#94EC8E', strokeWidth: 0 }} activeDot={{ r: 7, fill: '#94EC8E' }} />
@@ -236,6 +245,7 @@ export default function Page() {
 
           <div className="card">
             <div className="chart-header"><span className="chart-title">Critical Incidents Trend</span><span className="chart-tag">Monthly</span></div>
+            <div className="chart-legend"><span className="chart-legend-dot red" /><span className="chart-legend-text">Critical Incidents</span></div>
             <div className="chart-wrap">
               {lastPoint && (
                 <div className="chart-badge critical">
@@ -247,12 +257,12 @@ export default function Page() {
                 <AreaChart data={trendData}>
                   <defs>
                     <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#FF4D4D" stopOpacity={0.35} />
+                      <stop offset="5%" stopColor="#FF4D4D" stopOpacity={0.45} />
                       <stop offset="95%" stopColor="#FF4D4D" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="#222" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={10} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                  <CartesianGrid stroke="#262626" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="shortLabel" stroke="#9E9E9E" fontSize={10} axisLine={false} tickLine={false} interval={0} />
                   <YAxis stroke="#9E9E9E" fontSize={11} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, p) => p?.[0]?.payload?.fullLabel} />
                   <Area type="monotone" dataKey="critical" stroke="#FF4D4D" strokeWidth={2.5} fill="url(#gradRed)" dot={{ r: 5, fill: '#FF4D4D', strokeWidth: 0 }} activeDot={{ r: 7, fill: '#FF4D4D' }} />
@@ -288,9 +298,7 @@ export default function Page() {
                 {MONTH_ORDER.map((m) => {
                   const v = heatmap.map[`${y}|${m}`] || 0;
                   return (
-                    <div key={m} className="heatmap-cell" style={{ background: heatColor(v, heatmap.max) }}>
-                      {v || ''}
-                    </div>
+                    <div key={m} className="heatmap-cell" style={{ background: heatColor(v, heatmap.max) }} title={`${MONTH_SHORT[m]} ${y}: ${v}`} />
                   );
                 })}
               </div>
