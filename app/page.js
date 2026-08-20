@@ -305,7 +305,7 @@ export default function Page() {
           </div>
 
           <div className="card">
-            <div className="chart-header"><span className="chart-title">Top 5 Clients with Highest Incidents</span></div>
+            <div className="chart-header"><span className="chart-title">Outliers with the Highest Number of Incidents</span></div>
             <div className="client-list">
               {topClients.map((c) => (
                 <div className="client-row" key={c.client}>
