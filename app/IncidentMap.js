@@ -85,16 +85,35 @@ export default function IncidentMap({ rows }) {
       const { cities } = cityData;
       layerGroup = L.layerGroup().addTo(mapRef.current);
       const max = Math.max(...cities.map((c) => c.count), 1);
-      L.heatLayer(cities.map((c) => [...c.coordinates, Math.max(.35, c.count / max)]), {
-        radius: 42, blur: 30, maxZoom: 8, minOpacity: .32,
-        gradient: { .12: '#72d68a', .38: '#f2df61', .68: '#f39a49', 1: '#d92f4b' },
+      const heatPoints = cities.flatMap((city) => {
+        const ratio = Math.sqrt(city.count / max);
+        const spread = .18 + ratio * .34;
+        const points = [[...city.coordinates, Math.max(.42, ratio)]];
+        const rings = city.count >= 15 ? 2 : 1;
+        for (let ring = 1; ring <= rings; ring += 1) {
+          const steps = ring === 1 ? 10 : 16;
+          for (let i = 0; i < steps; i += 1) {
+            const angle = (Math.PI * 2 * i) / steps + city.coordinates[0] * .07;
+            const distance = spread * ring * .72;
+            points.push([
+              city.coordinates[0] + Math.sin(angle) * distance,
+              city.coordinates[1] + Math.cos(angle) * distance / Math.max(.35, Math.cos(city.coordinates[0] * Math.PI / 180)),
+              Math.max(.2, ratio * (ring === 1 ? .62 : .34)),
+            ]);
+          }
+        }
+        return points;
+      });
+      L.heatLayer(heatPoints, {
+        radius: 54, blur: 38, maxZoom: 8, minOpacity: .38, max: 1,
+        gradient: { .12: '#3ebd78', .34: '#b8dc61', .54: '#f6d34a', .74: '#f28b38', 1: '#cf2345' },
       }).addTo(layerGroup);
 
       const markerLayer = L.layerGroup().addTo(layerGroup);
       const renderMarkers = () => {
         markerLayer.clearLayers();
         const zoom = mapRef.current.getZoom();
-        const threshold = zoom <= 5 ? 62 : zoom === 6 ? 46 : 0;
+        const threshold = zoom < 6 ? 76 : zoom < 7 ? 56 : zoom < 8 ? 36 : 0;
         const groups = [];
 
         cities.forEach((city) => {
@@ -155,10 +174,6 @@ export default function IncidentMap({ rows }) {
   return (
     <div ref={stageRef} className="map-stage">
       <div ref={elementRef} className="incident-map" aria-label="Critical incidents city heatmap" />
-      <div className="map-insight">
-        <div><span>CRITICAL INCIDENTS</span><strong>{cityData.cities.reduce((sum, city) => sum + city.count, 0)}</strong></div>
-        <div className="density-key"><span>Lower</span><i /><span>Higher</span></div>
-      </div>
       <button className="map-expand" type="button" onClick={toggleFullscreen} aria-label={isFullscreen ? 'Exit fullscreen map' : 'Open map fullscreen'} title={isFullscreen ? 'Exit fullscreen' : 'Open fullscreen'}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d={isFullscreen ? 'M8 3v5H3M16 3v5h5M8 21v-5H3M16 21v-5h5' : 'M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5'} /></svg>
         <span>{isFullscreen ? 'Exit full screen' : 'Full screen'}</span>

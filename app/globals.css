@@ -256,12 +256,6 @@ body {
 .count-bubble.cool span { background:#2d7e61; }
 .count-bubble.warm span { background:#e18c32; }
 .count-bubble.hot span { background:#d62f4b; }
-.map-insight { position:absolute; z-index:650; top:14px; left:14px; min-width:210px; padding:12px 14px; border:1px solid rgba(255,255,255,.74); border-radius:10px; background:rgba(255,255,255,.92); box-shadow:0 8px 28px rgba(31,41,36,.14); backdrop-filter:blur(10px); color:#1b2521; }
-.map-insight > div:first-child { display:flex; align-items:center; justify-content:space-between; gap:20px; }
-.map-insight > div:first-child span { font-size:10px; letter-spacing:.7px; font-weight:800; color:#66716c; }
-.map-insight strong { font-size:22px; line-height:1; color:#d62f4b; }
-.density-key { margin-top:9px; padding-top:8px; border-top:1px solid #e3e7e4; display:flex; align-items:center; gap:7px; color:#77817c; font-size:9px; }
-.density-key i { display:block; flex:1; height:5px; border-radius:8px; background:linear-gradient(90deg,#72d68a,#f2df61,#f39a49,#d92f4b); }
 
 @media (max-width: 780px) {
   html, body { overflow:auto; }
@@ -279,5 +273,4 @@ body {
   .dashboard-tabs button { white-space:nowrap; }
   .map-expand span { display:none; }
   .map-expand { width:38px; padding:0; justify-content:center; }
-  .map-insight { min-width:176px; padding:10px 11px; }
 }
