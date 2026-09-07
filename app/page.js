@@ -255,8 +255,7 @@ export default function Page() {
               <div><h2>Critical Incident Hotspots</h2><p>City-level intensity from the Location column</p></div>
               <div className="map-legend"><span>Low</span><i /><span>High</span></div>
             </div>
-            {criticalCityData.cities.length ? <IncidentMap rows={filteredRows} /> : <div className="map-empty">No mappable Critical locations found for the selected filters.</div>}
-            {criticalCityData.unmapped > 0 && <div className="map-warning">{criticalCityData.unmapped} Critical row{criticalCityData.unmapped === 1 ? '' : 's'} could not be mapped because Location is empty or not a recognised city.</div>}
+            {criticalCityData.cities.length ? <IncidentMap rows={filteredRows} /> : <div className="map-empty">No Critical incidents found for the selected filters.</div>}
           </div>
         </div>
       ) : <>

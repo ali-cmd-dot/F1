@@ -23,6 +23,10 @@ const CITY_COORDINATES = {
   prayagraj:[25.4358,81.8463], allahabad:[25.4358,81.8463], jodhpur:[26.2389,73.0243],
   udaipur:[24.5854,73.7125], kota:[25.2138,75.8648], amritsar:[31.6340,74.8723],
   ludhiana:[30.9010,75.8573], jalandhar:[31.3260,75.5762], thane:[19.2183,72.9781],
+  krishnagiri:[12.5186,78.2137], ernakulam:[9.9816,76.2999], trichy:[10.7905,78.7047],
+  tiruchirappalli:[10.7905,78.7047], kolar:[13.1362,78.1291], pondicherry:[11.9416,79.8083],
+  puducherry:[11.9416,79.8083], hosur:[12.7409,77.8253], ambala:[30.3782,76.7767],
+  aurangabad:[19.8762,75.3433], chhatrapati:[19.8762,75.3433], patiala:[30.3398,76.3869],
 };
 
 function resolveCity(raw) {
@@ -62,31 +66,41 @@ export default function IncidentMap({ rows }) {
       if (cancelled || !elementRef.current) return;
 
       if (!mapRef.current) {
-        mapRef.current = L.map(elementRef.current, { zoomControl: false, minZoom: 4, maxZoom: 12 }).setView([22.8, 79.2], 5);
+        mapRef.current = L.map(elementRef.current, {
+          zoomControl: false, minZoom: 4, maxZoom: 12, attributionControl: true,
+          maxBounds: [[5.5, 66], [37.5, 99]], maxBoundsViscosity: .8,
+        }).setView([22.8, 79.2], 5);
         L.control.zoom({ position: 'bottomright' }).addTo(mapRef.current);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19,
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
         }).addTo(mapRef.current);
       }
 
       const { cities } = getCriticalCityData(rows);
       layerGroup = L.layerGroup().addTo(mapRef.current);
       const max = Math.max(...cities.map((c) => c.count), 1);
-      const heat = L.heatLayer(cities.map((c) => [...c.coordinates, Math.max(.3, c.count / max)]), {
-        radius: 38, blur: 28, maxZoom: 8, minOpacity: .35,
-        gradient: { .2: '#215B3B', .45: '#94EC8E', .7: '#FFC107', 1: '#FF4D4D' },
+      L.heatLayer(cities.map((c) => [...c.coordinates, Math.max(.35, c.count / max)]), {
+        radius: 46, blur: 32, maxZoom: 8, minOpacity: .42,
+        gradient: { .15: '#55cf71', .42: '#f4e665', .68: '#ff9b45', 1: '#e72f4f' },
       }).addTo(layerGroup);
 
       cities.forEach((city) => {
-        const size = 30 + Math.min(city.count, 30);
         L.circleMarker(city.coordinates, {
-          radius: Math.max(7, Math.min(15, 6 + city.count * .6)), color: '#ff7a7a', weight: 2,
-          fillColor: '#ff4d4d', fillOpacity: .86,
-        }).bindTooltip(`<div class="map-popup"><b>${city.name}</b><strong>${city.count}</strong><span>Critical incident${city.count === 1 ? '' : 's'}</span></div>`, { direction: 'top', offset: [0, -8], opacity: 1 })
-          .addTo(layerGroup);
+          radius: Math.max(9, Math.min(22, 8 + Math.sqrt(city.count) * 1.2)), color: '#fff', weight: 2,
+          fillColor: '#e73350', fillOpacity: .92,
+        }).bindPopup(`<div class="map-popup"><b>${city.name}</b><strong>${city.count}</strong><span>Critical incident${city.count === 1 ? '' : 's'}</span></div>`).addTo(layerGroup);
+
+        L.marker(city.coordinates, {
+          interactive: false,
+          icon: L.divIcon({ className: 'city-count-marker', html: `<span>${city.count}</span><b>${city.name}</b>`, iconSize: [96, 44], iconAnchor: [48, 22] }),
+        }).addTo(layerGroup);
       });
 
-      setTimeout(() => mapRef.current?.invalidateSize(), 80);
+      if (cities.length) {
+        const bounds = L.latLngBounds(cities.map((c) => c.coordinates));
+        mapRef.current.fitBounds(bounds.pad(.16), { animate: false, maxZoom: 6 });
+      }
+      setTimeout(() => mapRef.current?.invalidateSize({ pan: false }), 80);
     })();
 
     return () => { cancelled = true; if (layerGroup && mapRef.current) layerGroup.remove(); };
