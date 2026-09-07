@@ -38,6 +38,7 @@ export async function GET() {
     const colYear = findCol(headers, ['year']) || 'Year';
     const colMonth = findCol(headers, ['month']) || 'Month';
     const colClient = findCol(headers, ['client']) || 'Clients';
+    const colLocation = headers.find((h) => h.trim().toLowerCase() === 'location') || 'Location';
     const colDesc = findCol(headers, ['description', 'remark', 'detail', 'summary']);
 
     const filtered = rows
@@ -49,6 +50,7 @@ export async function GET() {
           month: (r[colMonth] || '').trim() || 'Unknown',
           client: (r[colClient] || '').trim() || 'Unknown',
           incidentType: (r[colIncidentType] || '').trim(),
+          location: (r[colLocation] || '').trim(),
           description: colDesc ? (r[colDesc] || '').trim() : '',
         };
       });

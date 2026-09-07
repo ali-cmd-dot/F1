@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
-import { Video, AlertTriangle, Users, Calendar, Clock } from 'lucide-react';
+import { Video, AlertTriangle, Users, Calendar, Clock, LayoutDashboard, MapPinned } from 'lucide-react';
+import IncidentMap, { getCriticalCityData } from './IncidentMap';
 
 const MONTH_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_SHORT = { January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'May',June:'Jun',July:'Jul',August:'Aug',September:'Sep',October:'Oct',November:'Nov',December:'Dec' };
@@ -104,6 +105,7 @@ export default function Page() {
   const [year, setYear] = useState('All');
   const [month, setMonth] = useState('All');
   const [lastUpdated, setLastUpdated] = useState('');
+  const [activeTab, setActiveTab] = useState('overview');
   const intervalRef = useRef(null);
 
   const loadData = () => {
@@ -140,6 +142,7 @@ export default function Page() {
   );
 
   const criticalRows = useMemo(() => filteredRows.filter((r) => r.incidentType === 'Critical'), [filteredRows]);
+  const criticalCityData = useMemo(() => getCriticalCityData(filteredRows), [filteredRows]);
   const totalClients = useMemo(() => new Set(filteredRows.map((r) => r.client)).size, [filteredRows]);
 
   const topClients = useMemo(() => {
@@ -234,6 +237,29 @@ export default function Page() {
           </div>
         </div>
       </div>
+
+      <nav className="dashboard-tabs" aria-label="Dashboard views">
+        <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}><LayoutDashboard size={16} /> Overview</button>
+        <button className={activeTab === 'map' ? 'active' : ''} onClick={() => setActiveTab('map')}><MapPinned size={16} /> Critical Incident Map</button>
+      </nav>
+
+      {activeTab === 'map' ? (
+        <div className="map-view">
+          <div className="map-summary">
+            <div><span>Mapped cities</span><strong>{criticalCityData.cities.length}</strong></div>
+            <div><span>Critical incidents</span><strong className="critical-text">{criticalRows.length}</strong></div>
+            <div className="map-note"><span className="pulse-dot" /> Showing only rows where Incident Type is Critical</div>
+          </div>
+          <div className="card map-card">
+            <div className="map-card-head">
+              <div><h2>Critical Incident Hotspots</h2><p>City-level intensity from the Location column</p></div>
+              <div className="map-legend"><span>Low</span><i /><span>High</span></div>
+            </div>
+            {criticalCityData.cities.length ? <IncidentMap rows={filteredRows} /> : <div className="map-empty">No mappable Critical locations found for the selected filters.</div>}
+            {criticalCityData.unmapped > 0 && <div className="map-warning">{criticalCityData.unmapped} Critical row{criticalCityData.unmapped === 1 ? '' : 's'} could not be mapped because Location is empty or not a recognised city.</div>}
+          </div>
+        </div>
+      ) : <>
 
       <div className="kpi-grid">
         <div className="card">
@@ -342,6 +368,7 @@ export default function Page() {
           <div className="heatmap-legend"><span>Low</span><div className="heatmap-gradient" /><span>High</span></div>
         </div>
       </div>
+      </>}
     </div>
   );
 }
