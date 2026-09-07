@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const CITY_COORDINATES = {
   bengaluru:[12.9716,77.5946], bangalore:[12.9716,77.5946], delhi:[28.6139,77.2090],
@@ -57,6 +57,8 @@ export default function IncidentMap({ rows }) {
   const elementRef = useRef(null);
   const stageRef = useRef(null);
   const mapRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const cityData = useMemo(() => getCriticalCityData(rows), [rows]);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,20 +71,23 @@ export default function IncidentMap({ rows }) {
       if (!mapRef.current) {
         mapRef.current = L.map(elementRef.current, {
           zoomControl: false, minZoom: 4, maxZoom: 12, attributionControl: true,
-          maxBounds: [[5.5, 66], [37.5, 99]], maxBoundsViscosity: .8,
+          zoomSnap: .25, zoomDelta: .5, maxBounds: [[6, 67], [36.5, 94]], maxBoundsViscosity: .9,
         }).setView([22.8, 79.2], 5);
         L.control.zoom({ position: 'bottomright' }).addTo(mapRef.current);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri', maxZoom: 16,
+        }).addTo(mapRef.current);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+          attribution: '', maxZoom: 16, pane: 'overlayPane', opacity: .78,
         }).addTo(mapRef.current);
       }
 
-      const { cities } = getCriticalCityData(rows);
+      const { cities } = cityData;
       layerGroup = L.layerGroup().addTo(mapRef.current);
       const max = Math.max(...cities.map((c) => c.count), 1);
       L.heatLayer(cities.map((c) => [...c.coordinates, Math.max(.35, c.count / max)]), {
-        radius: 46, blur: 32, maxZoom: 8, minOpacity: .42,
-        gradient: { .15: '#55cf71', .42: '#f4e665', .68: '#ff9b45', 1: '#e72f4f' },
+        radius: 42, blur: 30, maxZoom: 8, minOpacity: .32,
+        gradient: { .12: '#72d68a', .38: '#f2df61', .68: '#f39a49', 1: '#d92f4b' },
       }).addTo(layerGroup);
 
       const markerLayer = L.layerGroup().addTo(layerGroup);
@@ -105,9 +110,10 @@ export default function IncidentMap({ rows }) {
         groups.forEach((group) => {
           const clustered = group.cities.length > 1;
           const label = clustered ? `${group.cities.length} cities` : group.cities[0].name;
+          const intensity = group.count >= 50 ? 'hot' : group.count >= 15 ? 'warm' : 'cool';
           const marker = L.marker([group.lat, group.lng], {
             icon: L.divIcon({
-              className: `count-bubble ${clustered ? 'clustered' : ''}`,
+              className: `count-bubble ${clustered ? 'clustered' : ''} ${intensity}`,
               html: `<span>${group.count}</span>`, iconSize:[42,42], iconAnchor:[21,21],
             }),
           }).bindTooltip(`<div class="map-label"><b>${label}</b><span>${group.count} Critical incident${group.count === 1 ? '' : 's'}</span></div>`, { direction:'top', offset:[0,-18] });
@@ -119,7 +125,8 @@ export default function IncidentMap({ rows }) {
 
       if (cities.length) {
         const bounds = L.latLngBounds(cities.map((c) => c.coordinates));
-        mapRef.current.fitBounds(bounds.pad(.16), { animate: false, maxZoom: 6 });
+        mapRef.current.fitBounds(bounds.pad(.08), { animate: false, maxZoom: 6 });
+        if (mapRef.current.getZoom() < 5.25) mapRef.current.setZoom(5.25, { animate:false });
       }
       renderMarkers();
       mapRef.current.on('zoomend', renderMarkers);
@@ -128,9 +135,17 @@ export default function IncidentMap({ rows }) {
     })();
 
     return () => { cancelled = true; if (layerGroup && mapRef.current) { layerGroup._cleanupZoom?.(); layerGroup.remove(); } };
-  }, [rows]);
+  }, [cityData]);
 
   useEffect(() => () => { mapRef.current?.remove(); mapRef.current = null; }, []);
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === stageRef.current);
+      setTimeout(() => mapRef.current?.invalidateSize(), 120);
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) await stageRef.current?.requestFullscreen();
     else await document.exitFullscreen();
@@ -140,9 +155,13 @@ export default function IncidentMap({ rows }) {
   return (
     <div ref={stageRef} className="map-stage">
       <div ref={elementRef} className="incident-map" aria-label="Critical incidents city heatmap" />
-      <button className="map-expand" type="button" onClick={toggleFullscreen} aria-label="Open map fullscreen" title="Open fullscreen">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></svg>
-        <span>Expand map</span>
+      <div className="map-insight">
+        <div><span>CRITICAL INCIDENTS</span><strong>{cityData.cities.reduce((sum, city) => sum + city.count, 0)}</strong></div>
+        <div className="density-key"><span>Lower</span><i /><span>Higher</span></div>
+      </div>
+      <button className="map-expand" type="button" onClick={toggleFullscreen} aria-label={isFullscreen ? 'Exit fullscreen map' : 'Open map fullscreen'} title={isFullscreen ? 'Exit fullscreen' : 'Open fullscreen'}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d={isFullscreen ? 'M8 3v5H3M16 3v5h5M8 21v-5H3M16 21v-5h5' : 'M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5'} /></svg>
+        <span>{isFullscreen ? 'Exit full screen' : 'Full screen'}</span>
       </button>
     </div>
   );
