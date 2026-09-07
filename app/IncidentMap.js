@@ -55,6 +55,7 @@ export function getCriticalCityData(rows) {
 
 export default function IncidentMap({ rows }) {
   const elementRef = useRef(null);
+  const stageRef = useRef(null);
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -84,28 +85,65 @@ export default function IncidentMap({ rows }) {
         gradient: { .15: '#55cf71', .42: '#f4e665', .68: '#ff9b45', 1: '#e72f4f' },
       }).addTo(layerGroup);
 
-      cities.forEach((city) => {
-        L.circleMarker(city.coordinates, {
-          radius: Math.max(9, Math.min(22, 8 + Math.sqrt(city.count) * 1.2)), color: '#fff', weight: 2,
-          fillColor: '#e73350', fillOpacity: .92,
-        }).bindPopup(`<div class="map-popup"><b>${city.name}</b><strong>${city.count}</strong><span>Critical incident${city.count === 1 ? '' : 's'}</span></div>`).addTo(layerGroup);
+      const markerLayer = L.layerGroup().addTo(layerGroup);
+      const renderMarkers = () => {
+        markerLayer.clearLayers();
+        const zoom = mapRef.current.getZoom();
+        const threshold = zoom <= 5 ? 62 : zoom === 6 ? 46 : 0;
+        const groups = [];
 
-        L.marker(city.coordinates, {
-          interactive: false,
-          icon: L.divIcon({ className: 'city-count-marker', html: `<span>${city.count}</span><b>${city.name}</b>`, iconSize: [96, 44], iconAnchor: [48, 22] }),
-        }).addTo(layerGroup);
-      });
+        cities.forEach((city) => {
+          const point = mapRef.current.latLngToLayerPoint(city.coordinates);
+          const group = threshold ? groups.find((g) => g.points.some((p) => point.distanceTo(p) < threshold)) : null;
+          if (group) {
+            group.cities.push(city); group.points.push(point); group.count += city.count;
+            group.lat = group.cities.reduce((sum, c) => sum + c.coordinates[0] * c.count, 0) / group.count;
+            group.lng = group.cities.reduce((sum, c) => sum + c.coordinates[1] * c.count, 0) / group.count;
+          } else groups.push({ cities:[city], points:[point], count:city.count, lat:city.coordinates[0], lng:city.coordinates[1] });
+        });
+
+        groups.forEach((group) => {
+          const clustered = group.cities.length > 1;
+          const label = clustered ? `${group.cities.length} cities` : group.cities[0].name;
+          const marker = L.marker([group.lat, group.lng], {
+            icon: L.divIcon({
+              className: `count-bubble ${clustered ? 'clustered' : ''}`,
+              html: `<span>${group.count}</span>`, iconSize:[42,42], iconAnchor:[21,21],
+            }),
+          }).bindTooltip(`<div class="map-label"><b>${label}</b><span>${group.count} Critical incident${group.count === 1 ? '' : 's'}</span></div>`, { direction:'top', offset:[0,-18] });
+          if (clustered) marker.on('click', () => mapRef.current.setView([group.lat, group.lng], Math.min(zoom + 2, 8)));
+          else marker.bindPopup(`<div class="map-popup"><b>${group.cities[0].name}</b><strong>${group.count}</strong><span>Critical incident${group.count === 1 ? '' : 's'}</span></div>`);
+          marker.addTo(markerLayer);
+        });
+      };
 
       if (cities.length) {
         const bounds = L.latLngBounds(cities.map((c) => c.coordinates));
         mapRef.current.fitBounds(bounds.pad(.16), { animate: false, maxZoom: 6 });
       }
+      renderMarkers();
+      mapRef.current.on('zoomend', renderMarkers);
+      layerGroup._cleanupZoom = () => mapRef.current?.off('zoomend', renderMarkers);
       setTimeout(() => mapRef.current?.invalidateSize({ pan: false }), 80);
     })();
 
-    return () => { cancelled = true; if (layerGroup && mapRef.current) layerGroup.remove(); };
+    return () => { cancelled = true; if (layerGroup && mapRef.current) { layerGroup._cleanupZoom?.(); layerGroup.remove(); } };
   }, [rows]);
 
   useEffect(() => () => { mapRef.current?.remove(); mapRef.current = null; }, []);
-  return <div ref={elementRef} className="incident-map" aria-label="Critical incidents city heatmap" />;
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) await stageRef.current?.requestFullscreen();
+    else await document.exitFullscreen();
+    setTimeout(() => mapRef.current?.invalidateSize(), 120);
+  };
+
+  return (
+    <div ref={stageRef} className="map-stage">
+      <div ref={elementRef} className="incident-map" aria-label="Critical incidents city heatmap" />
+      <button className="map-expand" type="button" onClick={toggleFullscreen} aria-label="Open map fullscreen" title="Open fullscreen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></svg>
+        <span>Expand map</span>
+      </button>
+    </div>
+  );
 }
